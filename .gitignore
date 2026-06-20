@@ -1,0 +1,18 @@
+# Gradle
+.gradle/
+build/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+out/
+
+# Minecraft run directory
+run/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
