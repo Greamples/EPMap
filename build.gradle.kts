@@ -48,6 +48,10 @@ dependencies {
     implementation("net.fabricmc:fabric-loader:${project.property("loader_version")}")
     implementation("net.fabricmc:fabric-language-kotlin:${project.property("kotlin_loader_version")}")
     implementation("net.fabricmc.fabric-api:fabric-api:${project.property("fabric_version")}")
+
+    val xaeroWorldMap = files("libs/xaeroworldmap-fabric-${project.property("minecraft_version")}-${project.property("xaero_worldmap_version")}.jar")
+    "clientCompileOnly"(xaeroWorldMap)
+    "localRuntime"(xaeroWorldMap)
 }
 
 tasks.processResources {
