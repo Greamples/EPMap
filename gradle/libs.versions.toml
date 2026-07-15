@@ -1,16 +1,17 @@
 [versions]
-kotlin = "2.4.0"
+clojure = "1.12.0"
 minecraft = "26.1.2"
 fabric-loader = "0.19.3"
-fabric-kotlin = "1.13.12+kotlin.2.4.0"
 fabric-api = "0.152.1+26.1.2"
 fabric-loom = "1.17.12"
 xaero-minimap = "26.1.3"
 
 [libraries]
+clojure = { module = "org.clojure:clojure", version.ref = "clojure" }
+clojure-spec = { module = "org.clojure:spec.alpha", version = "0.5.238" }
+clojure-core-specs = { module = "org.clojure:core.specs.alpha", version = "0.4.74" }
 minecraft = { module = "com.mojang:minecraft", version.ref = "minecraft" }
 fabric-loader = { module = "net.fabricmc:fabric-loader", version.ref = "fabric-loader" }
-fabric-kotlin = { module = "net.fabricmc:fabric-language-kotlin", version.ref = "fabric-kotlin" }
 fabric-api = { module = "net.fabricmc.fabric-api:fabric-api", version.ref = "fabric-api" }
 
 [plugins]

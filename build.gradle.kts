@@ -1,8 +1,4 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
-    kotlin("jvm") version libs.versions.kotlin.get()
     idea
     alias(libs.plugins.loom)
 }
@@ -52,11 +48,54 @@ repositories {
 
 dependencies {
     minecraft(libs.minecraft)
-    implementation(libs.fabric.loader)
-    implementation(libs.fabric.kotlin)
-    implementation(libs.fabric.api)
-    implementation("maven.modrinth:xaeros-minimap:fabric-${libs.versions.minecraft.get()}-${libs.versions.xaero.minimap.get()}")
+    "clientImplementation"(libs.fabric.loader)
+    "clientImplementation"(libs.fabric.api)
+    "clientImplementation"(libs.clojure)
+    "clientImplementation"("maven.modrinth:xaeros-minimap:fabric-${libs.versions.minecraft.get()}-${libs.versions.xaero.minimap.get()}")
 
+    // Bundle the Clojure runtime into the mod jar (Jar-in-Jar) so it is present at runtime.
+    include(libs.clojure)
+    include(libs.clojure.spec)
+    include(libs.clojure.core.specs)
+}
+
+// --- Clojure AOT compilation -------------------------------------------------
+// Fabric loads JVM classes, not .clj source, so the Clojure client code is
+// ahead-of-time compiled to bytecode. Loom's remapJar then remaps this bytecode
+// from named (mojmap) to intermediary mappings, same as the Java/mixin classes.
+val clojureSrc = file("src/client/clojure")
+val clojureOut = layout.buildDirectory.dir("classes/clojure/client")
+
+val compileClojure by tasks.registering(JavaExec::class) {
+    group = "build"
+    description = "AOT-compiles the Clojure client namespaces."
+
+    val clientSourceSet = sourceSets.getByName("client")
+    dependsOn(tasks.named("compileClientJava"))
+
+    inputs.dir(clojureSrc)
+    outputs.dir(clojureOut)
+
+    // clojureSrc for the .clj source, plus the full client compile classpath so
+    // Fabric API / Minecraft / Xaero types resolve during AOT.
+    classpath = files(clojureSrc) + clientSourceSet.compileClasspath
+
+    mainClass.set("clojure.lang.Compile")
+    // Compiling the entrypoint namespace transitively compiles everything it requires.
+    args = listOf("org.greamples.epmap.client")
+
+    doFirst {
+        val out = clojureOut.get().asFile
+        out.mkdirs()
+        systemProperty("clojure.compile.path", out.absolutePath)
+    }
+}
+
+// Register the AOT output as an extra output of the client source set so it is
+// on the runtime/compile classpath, and pack it into the jar explicitly (the
+// source-set output alone is not picked up by Loom's jar packaging).
+sourceSets.named("client") {
+    output.dir(mapOf("builtBy" to compileClojure), clojureOut)
 }
 
 tasks.processResources {
@@ -71,7 +110,6 @@ tasks.processResources {
             "version" to project.version,
             "minecraft_version" to libs.versions.minecraft.get(),
             "loader_version" to libs.versions.fabric.loader.get(),
-            "kotlin_loader_version" to libs.versions.fabric.kotlin.get(),
             "xaerominimap" to libs.versions.xaero.minimap.get(),
         )
     }
@@ -86,11 +124,12 @@ tasks.withType<JavaCompile>().configureEach {
     options.release.set(targetJavaVersion)
 }
 
-tasks.withType<KotlinCompile>().configureEach {
-    compilerOptions.jvmTarget.set(JvmTarget.fromTarget(targetJavaVersion.toString()))
-}
-
 tasks.jar {
+    // Pack the AOT-compiled Clojure classes so they are present alongside the
+    // Java/mixin classes and get remapped by Loom's remapJar.
+    dependsOn(compileClojure)
+    from(clojureOut)
+
     from("LICENSE") {
         rename { "${it}_${project.base.archivesName.get()}" }
     }
